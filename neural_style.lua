@@ -34,6 +34,8 @@ cmd:option('-save_iter', 100)
 cmd:option('-output_image', 'out.png')
 
 -- Other options
+cmd:option('-load_style', '')
+cmd:option('-save_style', '')
 cmd:option('-style_scale', 1.0)
 cmd:option('-pooling', 'max', 'max|avg')
 cmd:option('-proto_file', 'models/VGG_ILSVRC_19_layers_deploy.prototxt')
@@ -157,15 +159,21 @@ local function main(params)
           gram = gram:cuda()
         end
         local target = nil
+        if params.load_style ~= '' then
+          target = torch.load(params.load_style.."_"..name..".matrix")
+        end
         for i = 1, #style_images_caffe do
           local target_features = net:forward(style_images_caffe[i]):clone()
           local target_i = gram:forward(target_features):clone()
           target_i:div(target_features:nElement())
           target_i:mul(style_blend_weights[i])
-          if i == 1 then
+          if target == nil then
             target = target_i
           else
             target:add(target_i)
+          end
+          if params.save_style ~= '' then
+            torch.save(params.save_style.."_"..name..".matrix", target)
           end
         end
         local norm = params.normalize_gradients
